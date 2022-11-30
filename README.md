@@ -20,6 +20,7 @@ Follow the instruction from [interp-net](https://github.com/mlds-lab/interp-net)
 ### Appliances Energy
 [Download](https://zenodo.org/record/3902637) the dataset.
 
+Run `preprocess_ae.py` to preprocess the data
 
 
 
