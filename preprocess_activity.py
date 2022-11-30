@@ -6,8 +6,6 @@ from tqdm import tqdm
 
 
 
-
-
 class PersonData:
     class_map = {
         "lying down": 0,
