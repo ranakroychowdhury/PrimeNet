@@ -8,14 +8,20 @@ This is the official PyTorch implementation of the [AAAI 2023](https://aaai.org/
 ## Datasets
 
 ### Activity
-[Download](https://archive.ics.uci.edu/ml/machine-learning-databases/00196/ConfLongDemo_JSI.txt) the dataset and place it under `/data/person/`.
-Run `activity.py` to load and save the data. 
+Run `download_activity.sh` to download and place the data under the proper directory.
+
+Run `preprocess_activity.py` to preprocess the data. 
+
 
 ### MIMIC-III
-
+Follow the instruction from [interp-net](https://github.com/mlds-lab/interp-net) to download and preprocess the data.
 
 
 ### Appliances Energy
+[Download](https://zenodo.org/record/3902637) the dataset.
+
+
+
 
 ### PhysioNet
 
