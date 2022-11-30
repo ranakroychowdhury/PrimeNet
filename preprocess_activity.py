@@ -1,151 +1,279 @@
-# Copyright 2021 The ODE-LSTM Authors. All Rights Reserved.
-
-import numpy as np
 import os
-from tqdm import tqdm
+import utils
+import torch
+from torchvision.datasets.utils import download_url
+import numpy as np
+from sklearn import model_selection
 
 
 
-class PersonData:
-    class_map = {
-        "lying down": 0,
-        "lying": 0,
-        "sitting down": 1,
-        "sitting": 1,
-        "standing up from lying": 2,
-        "standing up from sitting": 2,
-        "standing up from sitting on the ground": 2,
-        "walking": 3,
-        "falling": 4,
-        "on all fours": 5,
-        "sitting on the ground": 6,
-    }
+class PersonActivity(object):
+	urls = [
+		'https://archive.ics.uci.edu/ml/machine-learning-databases/00196/ConfLongDemo_JSI.txt',
+	]
 
-    sensor_ids = {
-        "010-000-024-033": 0,
-        "010-000-030-096": 1,
-        "020-000-033-111": 2,
-        "020-000-032-221": 3,
-    }
+	tag_ids = [
+		"010-000-024-033", #"ANKLE_LEFT",
+		"010-000-030-096", #"ANKLE_RIGHT",
+		"020-000-033-111", #"CHEST",
+		"020-000-032-221" #"BELT"
+	]
+	
+	tag_dict = {k: i for i, k in enumerate(tag_ids)}
 
-    def __init__(self, seq_len=32):
+	label_names = [
+		 "walking",
+		 "falling",
+		 "lying down",
+		 "lying",
+		 "sitting down",
+		 "sitting",
+		 "standing up from lying",
+		 "on all fours",
+		 "sitting on the ground",
+		 "standing up from sitting",
+		 "standing up from sit on grnd"
+	]
 
-        self.seq_len = seq_len
-        self.num_classes = 7
-        all_x, all_t, all_y = self.load_crappy_formated_csv()
-        all_x, all_t, all_y = self.cut_in_sequences(
-            all_x, all_t, all_y, seq_len=seq_len, inc=seq_len // 2
-        )
+	#label_dict = {k: i for i, k in enumerate(label_names)}
 
-        print("all_x.shape: ", str(all_x.shape))
-        print("all_t.shape: ", str(all_t.shape))
-        print("all_y.shape: ", str(all_y.shape))
-        total_seqs = all_x.shape[0]
-        print("Total number of sequences: {}".format(total_seqs))
-        permutation = np.random.RandomState(98841).permutation(total_seqs)
-        test_size = int(0.2 * total_seqs)
-
-        self.test_x = all_x[permutation[:test_size]]
-        self.test_y = all_y[permutation[:test_size]]
-        self.test_t = all_t[permutation[:test_size]]
-        self.train_x = all_x[permutation[test_size:]]
-        self.train_t = all_t[permutation[test_size:]]
-        self.train_y = all_y[permutation[test_size:]]
-
-        self.feature_size = int(self.train_x.shape[-1])
-
-        print("train_x.shape: ", str(self.train_x.shape))
-        print("train_t.shape: ", str(self.train_t.shape))
-        print("train_y.shape: ", str(self.train_y.shape))
-        print("Total number of train sequences: {}".format(self.train_x.shape[0]))
-        print("Total number of test  sequences: {}".format(self.test_x.shape[0]))
-
-    def load_crappy_formated_csv(self):
-
-        all_x = []
-        all_y = []
-        all_t = []
-
-        series_x = []
-        series_t = []
-        series_y = []
-
-        last_millis = None
-        if not os.path.isfile("data/person/ConfLongDemo_JSI.txt"):
-            print("ERROR: File 'data/person/ConfLongDemo_JSI.txt' not found")
-            print("Please execute the command")
-            print("source download_dataset.sh")
-            import sys
-
-            sys.exit(-1)
-        with open("data/person/ConfLongDemo_JSI.txt", "r") as f:
-            current_person = "A01"
-
-            for line in f:
-                arr = line.split(",")
-                if len(arr) < 6:
-                    break
-                if arr[0] != current_person:
-                    # Enque and reset
-                    series_x = np.stack(series_x, axis=0)
-                    series_t = np.stack(series_t, axis=0)
-                    series_y = np.array(series_y, dtype=np.int32)
-                    all_x.append(series_x)
-                    all_t.append(series_t)
-                    all_y.append(series_y)
-                    last_millis = None
-                    series_x = []
-                    series_y = []
-                    series_t = []
-
-                millis = np.int64(arr[2]) / (100 * 1000)
-                # 100ms will be normalized to 1.0
-                millis_mapped_to_1 = 10.0
-                if last_millis is None:
-                    elasped_sec = 0.05
-                else:
-                    elasped_sec = float(millis - last_millis) / 1000.0
-                elasped = elasped_sec * 1000 / millis_mapped_to_1
-
-                last_millis = millis
-                current_person = arr[0]
-                sensor_id = self.sensor_ids[arr[1]]
-                label_col = self.class_map[arr[7].replace("\n", "")]
-                feature_col_2 = np.array(arr[4:7], dtype=np.float32)
-                # Last 3 entries of the feature vector contain sensor value
-
-                # First 4 entries of the feature vector contain sensor ID
-                feature_col_1 = np.zeros(4, dtype=np.float32)
-                feature_col_1[sensor_id] = 1
-
-                feature_col = np.concatenate([feature_col_1, feature_col_2])
-                series_x.append(feature_col)
-                series_t.append(elasped)
-                series_y.append(label_col)
-
-        return all_x, all_t, all_y
-
-    def cut_in_sequences(self, all_x, all_t, all_y, seq_len, inc=1):
-
-        sequences_x = []
-        sequences_t = []
-        sequences_y = []
-
-        for i in range(len(all_x)):
-            x, t, y = all_x[i], all_t[i], all_y[i]
-
-            for s in range(0, x.shape[0] - seq_len, inc):
-                start = s
-                end = start + seq_len
-                sequences_x.append(x[start:end])
-                sequences_t.append(t[start:end])
-                sequences_y.append(y[start:end])
-
-        return (
-            np.stack(sequences_x, axis=0),
-            np.stack(sequences_t, axis=0).reshape([-1, seq_len, 1]),
-            np.stack(sequences_y, axis=0),
-        )
+	#Merge similar labels into one class
+	label_dict = {
+		"walking": 0,
+		 "falling": 1,
+		 "lying": 2,
+		 "lying down": 2,
+		 "sitting": 3,
+		 "sitting down" : 3,
+		 "standing up from lying": 4,
+		 "standing up from sitting": 4,
+		 "standing up from sit on grnd": 4,
+		 "on all fours": 5,
+		 "sitting on the ground": 6
+		 }
 
 
-data = PersonData()
+
+	def __init__(self, root, download=False,
+		reduce='average', max_seq_length = 50,
+		n_samples = None, device = torch.device("cpu")):
+
+		self.root = root
+		self.reduce = reduce
+		self.max_seq_length = max_seq_length
+
+		if download:
+			self.download()
+
+		if not self._check_exists():
+			raise RuntimeError('Dataset not found. You can use download=True to download it')
+		
+		if device == torch.device("cpu"):
+			self.data = torch.load(os.path.join(self.processed_folder, self.data_file), map_location='cpu')
+		else:
+			self.data = torch.load(os.path.join(self.processed_folder, self.data_file))
+
+		if n_samples is not None:
+			self.data = self.data[:n_samples]
+
+
+
+	def download(self):
+		if self._check_exists():
+			return
+
+		self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+		os.makedirs(self.raw_folder, exist_ok=True)
+		os.makedirs(self.processed_folder, exist_ok=True)
+
+
+		def save_record(records, record_id, tt, vals, mask, labels):
+			tt = torch.tensor(tt).to(self.device)
+
+			vals = torch.stack(vals)
+			mask = torch.stack(mask)
+			labels = torch.stack(labels)
+
+			# flatten the measurements for different tags
+			vals = vals.reshape(vals.size(0), -1)
+			mask = mask.reshape(mask.size(0), -1)
+			assert(len(tt) == vals.size(0))
+			assert(mask.size(0) == vals.size(0))
+			assert(labels.size(0) == vals.size(0))
+
+			#records.append((record_id, tt, vals, mask, labels))
+
+			seq_length = len(tt)
+			# split the long time series into smaller ones
+			offset = 0
+			slide = self.max_seq_length // 2
+
+			while (offset + self.max_seq_length < seq_length):
+				idx = range(offset, offset + self.max_seq_length)
+	
+				first_tp = tt[idx][0]
+				records.append((record_id, tt[idx] - first_tp, vals[idx], mask[idx], labels[idx]))
+				offset += slide
+
+
+		for url in self.urls:
+			filename = url.rpartition('/')[2]
+			download_url(url, self.raw_folder, filename, None)
+
+			print('Processing {}...'.format(filename))
+
+			dirname = os.path.join(self.raw_folder)
+			records = []
+			first_tp = None
+
+			for txtfile in os.listdir(dirname):
+				with open(os.path.join(dirname, txtfile)) as f:
+					lines = f.readlines()
+					prev_time = -1
+					tt = []
+
+					record_id = None
+					for l in lines:
+						cur_record_id, tag_id, time, date, val1, val2, val3, label = l.strip().split(',')
+						value_vec = torch.Tensor((float(val1), float(val2), float(val3))).to(self.device)
+						time = float(time)
+
+						if cur_record_id != record_id:
+							if record_id is not None:
+								save_record(records, record_id, tt, vals, mask, labels)
+							tt, vals, mask, nobs, labels = [], [], [], [], []
+							record_id = cur_record_id
+						
+							tt = [torch.zeros(1).to(self.device)]
+							vals = [torch.zeros(len(self.tag_ids),3).to(self.device)]
+							mask = [torch.zeros(len(self.tag_ids),3).to(self.device)]
+							nobs = [torch.zeros(len(self.tag_ids)).to(self.device)]
+							labels = [torch.zeros(len(self.label_names)).to(self.device)]
+							
+							first_tp = time
+							time = round((time - first_tp)/ 10**5)
+							prev_time = time
+						else:
+							# for speed -- we actually don't need to quantize it in Latent ODE
+							time = round((time - first_tp)/ 10**5) # quatizing by 100 ms. 10,000 is one millisecond, 10,000,000 is one second
+
+						if time != prev_time:
+							tt.append(time)
+							vals.append(torch.zeros(len(self.tag_ids),3).to(self.device))
+							mask.append(torch.zeros(len(self.tag_ids),3).to(self.device))
+							nobs.append(torch.zeros(len(self.tag_ids)).to(self.device))
+							labels.append(torch.zeros(len(self.label_names)).to(self.device))
+							prev_time = time
+
+						if tag_id in self.tag_ids:
+							n_observations = nobs[-1][self.tag_dict[tag_id]]
+							if (self.reduce == 'average') and (n_observations > 0):
+								prev_val = vals[-1][self.tag_dict[tag_id]]
+								new_val = (prev_val * n_observations + value_vec) / (n_observations + 1)
+								vals[-1][self.tag_dict[tag_id]] = new_val
+							else:
+								vals[-1][self.tag_dict[tag_id]] = value_vec
+
+							mask[-1][self.tag_dict[tag_id]] = 1
+							nobs[-1][self.tag_dict[tag_id]] += 1
+
+							if label in self.label_names:
+								if torch.sum(labels[-1][self.label_dict[label]]) == 0:
+									labels[-1][self.label_dict[label]] = 1
+						else:
+							assert tag_id == 'RecordID', 'Read unexpected tag id {}'.format(tag_id)
+					save_record(records, record_id, tt, vals, mask, labels)
+			
+			torch.save(
+				records,
+				os.path.join(self.processed_folder, 'data.pt')
+			)
+				
+		print('Done!')
+
+
+
+	def _check_exists(self):
+		for url in self.urls:
+			filename = url.rpartition('/')[2]
+			if not os.path.exists(
+				os.path.join(self.processed_folder, 'data.pt')
+			):
+				return False
+		return True
+
+
+
+	@property
+	def raw_folder(self):
+		return os.path.join(self.root, self.__class__.__name__, 'raw')
+
+
+
+	@property
+	def processed_folder(self):
+		return os.path.join(self.root, self.__class__.__name__, 'processed')
+
+
+
+	@property
+	def data_file(self):
+		return 'data.pt'
+
+
+
+	def __getitem__(self, index):
+		return self.data[index]
+
+
+
+	def __len__(self):
+		return len(self.data)
+
+
+
+	def __repr__(self):
+		fmt_str = 'Dataset ' + self.__class__.__name__ + '\n'
+		fmt_str += '    Number of datapoints: {}\n'.format(self.__len__())
+		fmt_str += '    Root Location: {}\n'.format(self.root)
+		fmt_str += '    Max length: {}\n'.format(self.max_seq_length)
+		fmt_str += '    Reduce: {}\n'.format(self.reduce)
+		return fmt_str
+
+
+
+def get_person_id(record_id):
+	# The first letter is the person id
+	person_id = record_id[0]
+	person_id = ord(person_id) - ord("A")
+	return person_id
+
+
+
+def get_train_val_test_data(args, device):
+	n_samples = min(10000, args.n)
+	dataset_obj = PersonActivity('PersonActivity', download=False, n_samples=n_samples, device=device)
+
+	# train-val-test split (64%, 16%, 20%)
+	train_data, test_data = model_selection.train_test_split(dataset_obj, train_size=0.8, random_state=42, shuffle=True)
+	train_data, val_data = model_selection.train_test_split(train_data, train_size=0.8, random_state=11, shuffle=True)
+	# train_data = [train_data[i] for i in np.random.choice(len(train_data), len(train_data))]
+	# test_data = [test_data[i] for i in np.random.choice(len(test_data), len(test_data))]
+
+	activity = True
+	print('classify: ', args.classif)
+	print('activity: ', activity)
+
+	train_data_combined = utils.variable_time_collate_fn(train_data, device, classify=args.classif, activity=activity)
+	val_data_combined = utils.variable_time_collate_fn(val_data, device, classify=args.classif, activity=activity)
+	test_data_combined = utils.variable_time_collate_fn(test_data, device, classify=args.classif, activity=activity)
+	
+	print(train_data_combined[1].sum(), val_data_combined[1].sum(), test_data_combined[1].sum())
+	
+	print(train_data_combined[0].size(), train_data_combined[1].size())
+	print(val_data_combined[0].size(), val_data_combined[1].size())
+	print(test_data_combined[0].size(), test_data_combined[1].size())
+	
+	# save the data and labels here
+	# code removed to avoid accidental overwriting of the current data split
