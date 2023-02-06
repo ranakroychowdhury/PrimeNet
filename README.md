@@ -27,7 +27,7 @@ Run `preprocess/preprocess_ae.py` to preprocess the data.
 Run `preprocess/preprocess_physionet.py` to download and preprocess the data.
 
 
-The data directory structure should be the same as that in data.zip. Extract data.zip to run experiments with a sample toy dataset.  
+The data directory structure should be the same as that in `data.zip`. Extract `data.zip` to run experiments with a sample toy dataset.  
 > data/  
 >> pretrain/  
 >>> X_train.pt  
@@ -44,10 +44,10 @@ The data directory structure should be the same as that in data.zip. Extract dat
 
 ## Pre-training
 
-
+Run `pretrain.sh` to run pretraining experiments on a dataset. The pretrained model is saved under `./models/` and the pretraining results are stored under `./results/`. The arguments for pretraining are explained in `pretrain.py`.
 
 ## Fine-tuning and Evaluation
 
-
+Run `finetune.sh` to run finetuning experiments on a dataset. The finetuning results are stored under `./results/`. The arguments for finetuning are explained in `finetune.py`.
 
 ## Reference
