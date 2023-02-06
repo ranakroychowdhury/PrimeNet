@@ -3,7 +3,10 @@ This is the official PyTorch implementation of the [AAAI 2023](https://aaai.org/
 
 ![alt text](https://github.com/ranakroychowdhury/PrimeNet/blob/main/setup.png)
 
-
+## Quick Start
+```
+git clone https://github.com/ranakroychowdhury/PrimeNet.git
+```
 
 ## Datasets
 
@@ -46,8 +49,18 @@ The data directory structure should be the same as that in `data.zip`. Extract `
 
 Run `pretrain.sh` to run pretraining experiments on a dataset. The pretrained model is saved under `./models/` and the pretraining results are stored under `./results/`. The arguments for pretraining are explained in `pretrain.py`.
 
+```
+sh pretrain.sh
+```
+
+
 ## Fine-tuning and Evaluation
 
 Run `finetune.sh` to run finetuning experiments on a dataset. The finetuning results are stored under `./results/`. The arguments for finetuning are explained in `finetune.py`.
+
+```
+sh finetune.sh
+```
+
 
 ## Reference
