@@ -56,7 +56,7 @@ sh pretrain.sh
 
 ## Fine-tuning and Evaluation
 
-Run `finetune.sh` to run finetuning experiments on a dataset. The finetuning results are stored under `./results/`. The arguments for finetuning are explained in `finetune.py`.
+Run `finetune.sh` to run finetuning experiments on a dataset. The pretrained model saved during the pretraining experiment under `./models/` is used for finetuning. The name of the pretraining model to use is added as an argument in the finetuning command. The finetuning results are stored under `./results/`. The arguments for finetuning are explained in `finetune.py`.
 
 ```
 sh finetune.sh
