@@ -32,7 +32,8 @@ The data directory structure should be the same as that in data.zip. Extract dat
 >> pretrain/  
 >>> X_train.pt  
 >>> X_val.pt  
->> finetune/  
+>> finetune/ 
+>>  
 >>> X_train.pt  
 >>> y_train.pt  
 >>> X_val.pt  
