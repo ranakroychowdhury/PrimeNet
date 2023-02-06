@@ -27,8 +27,8 @@ Run `preprocess/preprocess_ae.py` to preprocess the data.
 Run `preprocess/preprocess_physionet.py` to download and preprocess the data.
 
 
-The data directory structure should be the same as that in data.zip. Extract data.zip to run experiments with a sample toy dataset.
-`data/  
+The data directory structure should be the same as that in data.zip. Extract data.zip to run experiments with a sample toy dataset.  
+data/  
   |--pretrain/  
         |--X_train.pt  
         |--X_val.pt  
@@ -38,7 +38,7 @@ The data directory structure should be the same as that in data.zip. Extract dat
         |--X_val.pt  
         |--y_val.pt  
         |--X_test.pt  
-        |--y_test.pt`
+        |--y_test.pt
 
 
 ## Pre-training
