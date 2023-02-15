@@ -1,5 +1,5 @@
 # PrimeNet : Pre-Training for Irregular Multivariate Time Series
-This is the official PyTorch implementation of the [AAAI 2023](https://aaai.org/Conferences/AAAI-23/) paper **PrimeNet : Pre-Training for Irregular Multivariate Time Series**.
+This is the official PyTorch implementation of the [AAAI 2023](https://aaai.org/Conferences/AAAI-23/) paper [PrimeNet : Pre-Training for Irregular Multivariate Time Series](https://drive.google.com/file/d/1FSy9F_qO-eaNhKYWbCwpBCogC1ZNo8nd/view?usp=sharing).
 
 ![alt text](https://github.com/ranakroychowdhury/PrimeNet/blob/main/setup.png)
 
